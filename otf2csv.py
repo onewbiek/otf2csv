@@ -1,12 +1,12 @@
 #! /usr/bin/env python3
 
 import csv
-import time
 import otf2
 import argparse
 
 from typing import Dict, Any
 from collections import defaultdict
+from .lookup3 import hashlittle
 
 
 def file_name(handle: otf2.definitions.IoHandle) -> str:
@@ -40,19 +40,10 @@ def isIoOperation(function):
         return True
     return False
 
-
-def handleIoOperation():
-    pass
-
-
-def handleMetaOperation():
-    pass
-
-
 def otf2_to_csv(tracefile: str, csvfile: str) -> None:
     ''' Open `tracefile` and write it as CSV in to `csvfile`. '''
     rank_stat = defaultdict(dict)
-    region_set = set()
+    file_map = {}
 
     TIMER_GRANULARITY = 1000000
     start_time = 0
@@ -61,7 +52,7 @@ def otf2_to_csv(tracefile: str, csvfile: str) -> None:
 
         with open(csvfile, "w") as outfile:
             writer = csv.writer(outfile)
-            writer.writerow(['function', 'filename', 'rank', 'start', 'end', 'size', 'offset'])
+            writer.writerow(['file_name', 'file_id', 'function', 'rank', 'start', 'end', 'size', 'offset'])
 
             for location, event in trace.events:
                 if isinstance(event, otf2.events.ProgramBegin):
@@ -76,16 +67,13 @@ def otf2_to_csv(tracefile: str, csvfile: str) -> None:
                         if 'offset' not in rank_stat[location.group.name]:
                             rank_stat[location.group.name]['offset'] = 0
 
-                # elif isinstance(event, otf2.events.Leave):
-                #     region_name = event.region.name
-
-                #     if isIoOperation(region_name):
-                #         rank_stat[location.group.name].clear()
-
                 elif isinstance(event, otf2.events.IoOperationBegin):
                     filename = file_name(event.handle)
 
                     if filename and not ignored_file(filename):
+
+                        if filename not in file_map:
+                            file_map[filename] = hashlittle(filename)
 
                         attributes: Dict[str, Any] = {}
                         if event.attributes:
@@ -93,6 +81,7 @@ def otf2_to_csv(tracefile: str, csvfile: str) -> None:
 
                         rank_stat[location.group.name]['start'] = (event.time - start_time) / TIMER_GRANULARITY
                         rank_stat[location.group.name]['filename'] = filename
+                        rank_stat[location.group.name]['fileid'] = file_map[filename]
                         rank_stat[location.group.name]['size'] = event.bytes_request
                         if 'offset' in attributes:
                             rank_stat[location.group.name]['offset'] = attributes['offset']
@@ -104,11 +93,12 @@ def otf2_to_csv(tracefile: str, csvfile: str) -> None:
 
                         function = rank_stat[rank]['function']
                         filename = rank_stat[rank]['filename']
+                        fileid = rank_stat[rank]['fileid']
                         start = rank_stat[rank]['start']
                         end = (event.time - start_time) / TIMER_GRANULARITY
                         size = rank_stat[rank]['size']
                         offset = rank_stat[rank]['offset']
-                        writer.writerow([function, filename, rank.split()[2], start, end, size, offset])
+                        writer.writerow([filename, fileid, function, rank.split()[2], start, end, size, offset])
 
                         rank_stat[rank]['offset'] += size
 
