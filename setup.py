@@ -14,11 +14,8 @@ setuptools.setup(
     url="https://github.com/onewbiek/otf2csv",
     packages=['otf2_parser'],                  # package for import: after installaion, import otf2_parser
     install_requires=[
-        "csv",
         "otf2",
-        "argparser",
         "typing",
-        "collections",
     ],
     classifiers=[
         "Programming Language :: Python :: 3 :: only",

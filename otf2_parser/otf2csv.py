@@ -64,9 +64,6 @@ def otf2_to_csv(tracefile: str, csvfile: str) -> None:
                     if isIoOperation(region_name):
                         rank_stat[location.group.name]['function'] = region_name
 
-                        if 'offset' not in rank_stat[location.group.name]:
-                            rank_stat[location.group.name]['offset'] = 0
-
                 elif isinstance(event, otf2.events.IoOperationBegin):
                     filename = file_name(event.handle)
 
@@ -85,6 +82,8 @@ def otf2_to_csv(tracefile: str, csvfile: str) -> None:
                         rank_stat[location.group.name]['size'] = event.bytes_request
                         if 'offset' in attributes:
                             rank_stat[location.group.name]['offset'] = attributes['offset']
+                        else:
+                            rank_stat[location.group.name]['offset'] = 'Unknown'
 
                 elif isinstance(event, otf2.events.IoOperationComplete):
                     filename = file_name(event.handle)
@@ -99,8 +98,6 @@ def otf2_to_csv(tracefile: str, csvfile: str) -> None:
                         size = rank_stat[rank]['size']
                         offset = rank_stat[rank]['offset']
                         writer.writerow([filename, fileid, function, rank.split()[2], start, end, size, offset])
-
-                        rank_stat[rank]['offset'] += size
 
                 else: continue
 
